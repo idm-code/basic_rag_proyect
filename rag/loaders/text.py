@@ -1,7 +1,7 @@
 import os
 from typing import List
 from models.document import Document
-from rag.loaders.base import BaseLoader
+from rag.loaders.base_loader import BaseLoader
 
 try:
     import PyPDF2
