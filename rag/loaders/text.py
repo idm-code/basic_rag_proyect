@@ -15,14 +15,15 @@ class TextAndPdfFileLoader(BaseLoader):
             if path.endswith('.txt'):
                 with open(path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    documents.append(Document(content, path))
+                    metadata = {"type": "txt"}
+                    documents.append(Document(content, path, metadata))
             elif path.endswith('.pdf') and PyPDF2:
                 with open(path, 'rb') as f:
                     reader = PyPDF2.PdfReader(f)
-                    content = ""
-                    for page in reader.pages:
-                        content += page.extract_text() or ""
-                    documents.append(Document(content, path))
+                    for i, page in enumerate(reader.pages):
+                        content = page.extract_text() or ""
+                        metadata = {"type": "pdf", "page": i + 1}
+                        documents.append(Document(content, path, metadata))
         elif os.path.isdir(path):
             for root, _, files in os.walk(path):
                 for file in files:
@@ -30,12 +31,13 @@ class TextAndPdfFileLoader(BaseLoader):
                     if file.endswith('.txt'):
                         with open(file_path, 'r', encoding='utf-8') as f:
                             content = f.read()
-                            documents.append(Document(content, file_path))
+                            metadata = {"type": "txt"}
+                            documents.append(Document(content, file_path, metadata))
                     elif file.endswith('.pdf') and PyPDF2:
                         with open(file_path, 'rb') as f:
                             reader = PyPDF2.PdfReader(f)
-                            content = ""
-                            for page in reader.pages:
-                                content += page.extract_text() or ""
-                            documents.append(Document(content, file_path))
+                            for i, page in enumerate(reader.pages):
+                                content = page.extract_text() or ""
+                                metadata = {"type": "pdf", "page": i + 1}
+                                documents.append(Document(content, file_path, metadata))
         return documents

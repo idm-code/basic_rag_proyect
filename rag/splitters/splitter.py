@@ -12,15 +12,24 @@ class CharacterSplitter(BaseSplitter):
         content = document.content
         chunks = []
         start = 0
+        idx = 0
         while start < len(content):
             end = min(start + self.chunk_size, len(content))
             chunk_content = content[start:end]
             chunk_source = f"{document.source} [chars {start}:{end}]"
-            chunks.append(Document(chunk_content, chunk_source))
+            metadata = dict(document.metadata)
+            metadata.update({"chunk_index": idx, "char_start": start, "char_end": end})
+            chunks.append(Document(chunk_content, chunk_source, metadata))
             start += self.chunk_size - self.overlap if self.chunk_size > self.overlap else self.chunk_size
+            idx += 1
         return chunks
 
 class ParagraphSplitter(BaseSplitter):
     def split(self, document: Document) -> List[Document]:
         paragraphs = [p for p in document.content.split('\n\n') if p.strip()]
-        return [Document(p, f"{document.source} [paragraph {i}]") for i, p in enumerate(paragraphs)]
+        result = []
+        for i, p in enumerate(paragraphs):
+            metadata = dict(document.metadata)
+            metadata.update({"paragraph_index": i})
+            result.append(Document(p, f"{document.source} [paragraph {i}]", metadata))
+        return result
