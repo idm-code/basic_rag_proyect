@@ -1,5 +1,6 @@
 from rag.loaders.text import TextAndPdfFileLoader
 from rag.splitters.splitter import CharacterSplitter
+from rag.embeddings.embed import SimpleEmbedding
 from utils.logger import get_logger
 
 def main():
@@ -20,6 +21,13 @@ def main():
         for chunk in chunks:
             logger.info(f"Fragmento metadata: {chunk.metadata}")
     logger.info(f"Total de fragmentos generados: {len(all_chunks)}")
+
+    # Embeddings
+    embedder = SimpleEmbedding()
+    embeddings = embedder.embed(all_chunks)
+    logger.info(f"Embeddings generados para {len(embeddings)} fragmentos")
+    for i, emb in enumerate(embeddings[:5]):
+        logger.info(f"Embedding {i}: {emb}")
 
 if __name__ == "__main__":
     main()
