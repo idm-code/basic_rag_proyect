@@ -1,6 +1,6 @@
 # RAG Project
 
-Este proyecto implementa un sistema modular para la carga, división y gestión de metadata de documentos en un flujo RAG (Retrieval-Augmented Generation), permitiendo la lectura eficiente de archivos `.txt` y `.pdf`, así como su fragmentación óptima y enriquecimiento con metadata para procesamiento posterior.
+Este proyecto implementa un sistema modular para la carga, división, gestión de metadata y generación de embeddings de documentos en un flujo RAG (Retrieval-Augmented Generation), permitiendo la lectura eficiente de archivos `.txt` y `.pdf`, su fragmentación óptima, enriquecimiento con metadata y vectorización para procesamiento posterior.
 
 > **Nota:**  
 > Este proyecto irá creciendo exponencialmente, añadiendo todos los pasos de la técnica RAG (Retrieval-Augmented Generation). Por lo tanto, se irá modificando y ampliando periódicamente hasta finalizar el desarrollo completo del sistema.
@@ -19,6 +19,9 @@ rag/
     splitters/
         base_splitter.py
         splitter.py
+    embeddings/
+        base_embeddings.py
+        embed.py
 models/
     document.py
 resources/
@@ -45,15 +48,17 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Esto cargará los documentos desde la ruta especificada en `main.py`, los dividirá en fragmentos usando el splitter configurado y mostrará información relevante usando el sistema de logging, incluyendo la metadata asociada a cada documento y fragmento.
+Esto cargará los documentos desde la ruta especificada en `main.py`, los dividirá en fragmentos usando el splitter configurado, generará embeddings para cada fragmento y mostrará información relevante usando el sistema de logging, incluyendo la metadata y los embeddings asociados a cada documento y fragmento.
 
 ## Componentes principales
 
-- **models/document.py**: Modelo de datos para representar un documento, ahora con soporte para metadata flexible.
+- **models/document.py**: Modelo de datos para representar un documento, con soporte para metadata flexible.
 - **rag/loaders/base_loader.py**: Clase base abstracta para loaders de documentos.
 - **rag/loaders/text.py**: Loader que permite la carga de archivos `.txt` y `.pdf`, añadiendo metadata relevante (tipo de archivo, número de página, etc.).
 - **rag/splitters/base_splitter.py**: Clase base abstracta para splitters de documentos.
 - **rag/splitters/splitter.py**: Splitters concretos, como `CharacterSplitter` y `ParagraphSplitter`, que dividen documentos en fragmentos y enriquecen la metadata de cada fragmento.
+- **rag/embeddings/base_embeddings.py**: Clase base abstracta para generadores de embeddings.
+- **rag/embeddings/embed.py**: Implementación de ejemplo de un generador de embeddings (`SimpleEmbedding`).
 - **utils/logger.py**: Configuración centralizada del logger para el proyecto.
 - **resources/**: Carpeta sugerida para almacenar los documentos a cargar.
 
@@ -65,17 +70,25 @@ Cada instancia de `Document` incluye un diccionario `metadata` que almacena info
 - Índices de fragmento o párrafo (añadidos por los splitters)
 - Otros campos personalizables según necesidades futuras
 
+## Embeddings
+
+El sistema incluye una arquitectura extensible para la generación de embeddings:
+- **rag/embeddings/base_embeddings.py**: Define la interfaz base para cualquier generador de embeddings.
+- **rag/embeddings/embed.py**: Implementa un ejemplo sencillo (`SimpleEmbedding`). Puedes sustituirlo o ampliarlo con modelos reales (por ejemplo, spaCy, SentenceTransformers, OpenAI, etc.).
+
 ## Personalización y extensión
 
 - Puedes extender el sistema añadiendo nuevos loaders para otros formatos de archivo siguiendo la estructura de `BaseLoader`.
 - Puedes crear nuevos splitters para diferentes estrategias de fragmentación heredando de `BaseSplitter`.
 - Puedes enriquecer la metadata en cualquier punto del pipeline para adaptarla a tus necesidades.
+- Puedes implementar nuevos generadores de embeddings heredando de `BaseEmbedding`.
 
 ## Ejemplo de uso en código
 
 ```python
 from rag.loaders.text import TextAndPdfFileLoader
 from rag.splitters.splitter import CharacterSplitter
+from rag.embeddings.embed import SimpleEmbedding
 from utils.logger import get_logger
 
 def main():
@@ -96,6 +109,13 @@ def main():
         for chunk in chunks:
             logger.info(f"Fragmento metadata: {chunk.metadata}")
     logger.info(f"Total de fragmentos generados: {len(all_chunks)}")
+
+    # Embeddings
+    embedder = SimpleEmbedding()
+    embeddings = embedder.embed(all_chunks)
+    logger.info(f"Embeddings generados para {len(embeddings)} fragmentos")
+    for i, emb in enumerate(embeddings[:5]):
+        logger.info(f"Embedding {i}: {emb}")
 
 if __name__ == "__main__":
     main()
