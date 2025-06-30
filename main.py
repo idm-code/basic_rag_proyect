@@ -1,10 +1,14 @@
 from rag.loaders.text import TextAndPdfFileLoader
 from rag.splitters.splitter import CharacterSplitter
 from rag.embeddings.embed import SimpleEmbedding
+from rag.vectorstores.memory import MemoryVectorStore
 from utils.logger import get_logger
 
 def main():
+    # logger config
     logger = get_logger()
+
+    # Loader
     loader = TextAndPdfFileLoader()
     logger.info("Iniciando carga de documentos...")
     docs = loader.load("resources/")
@@ -12,6 +16,7 @@ def main():
     for doc in docs:
         logger.info(f"Documento cargado: {doc.source} (longitud: {len(doc.content)} caracteres) | Metadata: {doc.metadata}")
 
+    # Splitter
     splitter = CharacterSplitter(chunk_size=1000, overlap=100)
     all_chunks = []
     for doc in docs:
@@ -28,6 +33,18 @@ def main():
     logger.info(f"Embeddings generados para {len(embeddings)} fragmentos")
     for i, emb in enumerate(embeddings[:5]):
         logger.info(f"Embedding {i}: {emb}")
+
+    # Vector Store
+    vectorstore = MemoryVectorStore()
+    vectorstore.add(embeddings, all_chunks)
+    logger.info("Embeddings y fragmentos añadidos al vector store.")
+
+    # OUTPUT
+    if embeddings:
+        results = vectorstore.search(embeddings[0], top_k=3)
+        logger.info("Resultados de búsqueda (top 3):")
+        for doc, score in results:
+            logger.info(f"Score: {score:.4f} | Metadata: {doc.metadata}")
 
 if __name__ == "__main__":
     main()
