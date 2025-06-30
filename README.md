@@ -1,6 +1,6 @@
 # RAG Project
 
-Este proyecto implementa un sistema modular para la carga, división, gestión de metadata y generación de embeddings de documentos en un flujo RAG (Retrieval-Augmented Generation), permitiendo la lectura eficiente de archivos `.txt` y `.pdf`, su fragmentación óptima, enriquecimiento con metadata y vectorización para procesamiento posterior.
+Este proyecto implementa un sistema modular para la carga, división, gestión de metadata, generación de embeddings y almacenamiento/búsqueda vectorial de documentos en un flujo RAG (Retrieval-Augmented Generation). Permite la lectura eficiente de archivos `.txt` y `.pdf`, su fragmentación óptima, enriquecimiento con metadata, vectorización y búsqueda semántica para procesamiento posterior.
 
 > **Nota:**  
 > Este proyecto irá creciendo exponencialmente, añadiendo todos los pasos de la técnica RAG (Retrieval-Augmented Generation). Por lo tanto, se irá modificando y ampliando periódicamente hasta finalizar el desarrollo completo del sistema.
@@ -22,6 +22,9 @@ rag/
     embeddings/
         base_embeddings.py
         embed.py
+    vectorstores/
+        base_vectorstore.py
+        memory.py
 models/
     document.py
 resources/
@@ -48,7 +51,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Esto cargará los documentos desde la ruta especificada en `main.py`, los dividirá en fragmentos usando el splitter configurado, generará embeddings para cada fragmento y mostrará información relevante usando el sistema de logging, incluyendo la metadata y los embeddings asociados a cada documento y fragmento.
+Esto cargará los documentos desde la ruta especificada en `main.py`, los dividirá en fragmentos usando el splitter configurado, generará embeddings para cada fragmento, almacenará los embeddings y fragmentos en una vector store en memoria y permitirá búsquedas semánticas. Toda la información relevante (metadata, embeddings, resultados de búsqueda) se muestra usando el sistema de logging.
 
 ## Componentes principales
 
@@ -59,6 +62,8 @@ Esto cargará los documentos desde la ruta especificada en `main.py`, los dividi
 - **rag/splitters/splitter.py**: Splitters concretos, como `CharacterSplitter` y `ParagraphSplitter`, que dividen documentos en fragmentos y enriquecen la metadata de cada fragmento.
 - **rag/embeddings/base_embeddings.py**: Clase base abstracta para generadores de embeddings.
 - **rag/embeddings/embed.py**: Implementación de ejemplo de un generador de embeddings (`SimpleEmbedding`).
+- **rag/vectorstores/base_vectorstore.py**: Clase base abstracta para almacenamiento vectorial.
+- **rag/vectorstores/memory.py**: Implementación de una vector store en memoria con búsqueda por similitud de coseno.
 - **utils/logger.py**: Configuración centralizada del logger para el proyecto.
 - **resources/**: Carpeta sugerida para almacenar los documentos a cargar.
 
@@ -76,12 +81,19 @@ El sistema incluye una arquitectura extensible para la generación de embeddings
 - **rag/embeddings/base_embeddings.py**: Define la interfaz base para cualquier generador de embeddings.
 - **rag/embeddings/embed.py**: Implementa un ejemplo sencillo (`SimpleEmbedding`). Puedes sustituirlo o ampliarlo con modelos reales (por ejemplo, spaCy, SentenceTransformers, OpenAI, etc.).
 
+## Vector Store
+
+El sistema soporta almacenamiento y búsqueda vectorial:
+- **rag/vectorstores/base_vectorstore.py**: Define la interfaz base para cualquier vector store.
+- **rag/vectorstores/memory.py**: Implementa una vector store en memoria usando listas y búsqueda por similitud de coseno. Puedes extenderlo para usar FAISS, Pinecone, ChromaDB, etc.
+
 ## Personalización y extensión
 
 - Puedes extender el sistema añadiendo nuevos loaders para otros formatos de archivo siguiendo la estructura de `BaseLoader`.
 - Puedes crear nuevos splitters para diferentes estrategias de fragmentación heredando de `BaseSplitter`.
 - Puedes enriquecer la metadata en cualquier punto del pipeline para adaptarla a tus necesidades.
 - Puedes implementar nuevos generadores de embeddings heredando de `BaseEmbedding`.
+- Puedes crear nuevas vector stores heredando de `BaseVectorStore`.
 
 ## Ejemplo de uso en código
 
@@ -89,6 +101,7 @@ El sistema incluye una arquitectura extensible para la generación de embeddings
 from rag.loaders.text import TextAndPdfFileLoader
 from rag.splitters.splitter import CharacterSplitter
 from rag.embeddings.embed import SimpleEmbedding
+from rag.vectorstores.memory import MemoryVectorStore
 from utils.logger import get_logger
 
 def main():
@@ -117,6 +130,18 @@ def main():
     for i, emb in enumerate(embeddings[:5]):
         logger.info(f"Embedding {i}: {emb}")
 
+    # Vector Store
+    vectorstore = MemoryVectorStore()
+    vectorstore.add(embeddings, all_chunks)
+    logger.info("Embeddings y fragmentos añadidos al vector store.")
+
+    # Ejemplo de búsqueda
+    if embeddings:
+        results = vectorstore.search(embeddings[0], top_k=3)
+        logger.info("Resultados de búsqueda (top 3):")
+        for doc, score in results:
+            logger.info(f"Score: {score:.4f} | Metadata: {doc.metadata}")
+
 if __name__ == "__main__":
     main()
 ```
@@ -124,6 +149,7 @@ if __name__ == "__main__":
 ## Dependencias
 
 - [PyPDF2](https://pypi.org/project/PyPDF2/): Para la lectura de archivos PDF.
+- [numpy](https://pypi.org/project/numpy/): Para operaciones vectoriales en la vector store.
 
 ---
 
