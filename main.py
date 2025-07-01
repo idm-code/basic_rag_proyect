@@ -2,6 +2,7 @@ from rag.loaders.text import TextAndPdfFileLoader
 from rag.splitters.splitter import CharacterSplitter
 from rag.embeddings.embed import SimpleEmbedding
 from rag.vectorstores.memory import MemoryVectorStore
+from rag.indexing.indexer import SimpleIndexer
 from utils.logger import get_logger
 
 def main():
@@ -39,8 +40,15 @@ def main():
     vectorstore.add(embeddings, all_chunks)
     logger.info("Embeddings y fragmentos añadidos al vector store.")
 
-    # OUTPUT
-    if embeddings:
+    # Indexing
+    indexer = SimpleIndexer(loader, splitter, embedder, vectorstore)
+    logger.info("Iniciando indexación...")
+    chunks = indexer.index("resources/")
+    logger.info(f"Total de fragmentos indexados: {len(chunks)}")
+
+    # Ejemplo de búsqueda
+    if chunks:
+        embeddings = embedder.embed(chunks)
         results = vectorstore.search(embeddings[0], top_k=3)
         logger.info("Resultados de búsqueda (top 3):")
         for doc, score in results:
