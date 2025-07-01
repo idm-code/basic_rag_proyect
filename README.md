@@ -1,6 +1,6 @@
 # RAG Project
 
-Este proyecto implementa un sistema modular para la carga, división, gestión de metadata, generación de embeddings y almacenamiento/búsqueda vectorial de documentos en un flujo RAG (Retrieval-Augmented Generation). Permite la lectura eficiente de archivos `.txt` y `.pdf`, su fragmentación óptima, enriquecimiento con metadata, vectorización y búsqueda semántica para procesamiento posterior.
+Este proyecto implementa un sistema modular para la carga, división, gestión de metadata, generación de embeddings, almacenamiento/búsqueda vectorial e indexación de documentos en un flujo RAG (Retrieval-Augmented Generation). Permite la lectura eficiente de archivos `.txt` y `.pdf`, su fragmentación óptima, enriquecimiento con metadata, vectorización, indexación y búsqueda semántica para procesamiento posterior.
 
 > **Nota:**  
 > Este proyecto irá creciendo exponencialmente, añadiendo todos los pasos de la técnica RAG (Retrieval-Augmented Generation). Por lo tanto, se irá modificando y ampliando periódicamente hasta finalizar el desarrollo completo del sistema.
@@ -25,6 +25,9 @@ rag/
     vectorstores/
         base_vectorstore.py
         memory.py
+    indexing/
+        base_indexer.py
+        indexer.py
 models/
     document.py
 resources/
@@ -51,7 +54,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Esto cargará los documentos desde la ruta especificada en `main.py`, los dividirá en fragmentos usando el splitter configurado, generará embeddings para cada fragmento, almacenará los embeddings y fragmentos en una vector store en memoria y permitirá búsquedas semánticas. Toda la información relevante (metadata, embeddings, resultados de búsqueda) se muestra usando el sistema de logging.
+Esto cargará los documentos desde la ruta especificada en `main.py`, los dividirá en fragmentos usando el splitter configurado, generará embeddings para cada fragmento, almacenará los embeddings y fragmentos en una vector store en memoria, realizará la indexación y permitirá búsquedas semánticas. Toda la información relevante (metadata, embeddings, resultados de búsqueda) se muestra usando el sistema de logging.
 
 ## Componentes principales
 
@@ -64,6 +67,8 @@ Esto cargará los documentos desde la ruta especificada en `main.py`, los dividi
 - **rag/embeddings/embed.py**: Implementación de ejemplo de un generador de embeddings (`SimpleEmbedding`).
 - **rag/vectorstores/base_vectorstore.py**: Clase base abstracta para almacenamiento vectorial.
 - **rag/vectorstores/memory.py**: Implementación de una vector store en memoria con búsqueda por similitud de coseno.
+- **rag/indexing/base_indexer.py**: Clase base abstracta para indexadores.
+- **rag/indexing/indexer.py**: Implementación de un indexador (`SimpleIndexer`) que orquesta el pipeline de carga, división, embedding y almacenamiento.
 - **utils/logger.py**: Configuración centralizada del logger para el proyecto.
 - **resources/**: Carpeta sugerida para almacenar los documentos a cargar.
 
@@ -87,6 +92,12 @@ El sistema soporta almacenamiento y búsqueda vectorial:
 - **rag/vectorstores/base_vectorstore.py**: Define la interfaz base para cualquier vector store.
 - **rag/vectorstores/memory.py**: Implementa una vector store en memoria usando listas y búsqueda por similitud de coseno. Puedes extenderlo para usar FAISS, Pinecone, ChromaDB, etc.
 
+## Indexing
+
+El sistema centraliza el pipeline de indexación:
+- **rag/indexing/base_indexer.py**: Define la interfaz base para cualquier indexador.
+- **rag/indexing/indexer.py**: Implementa `SimpleIndexer`, que orquesta la carga, división, embedding y almacenamiento en la vector store.
+
 ## Personalización y extensión
 
 - Puedes extender el sistema añadiendo nuevos loaders para otros formatos de archivo siguiendo la estructura de `BaseLoader`.
@@ -94,6 +105,7 @@ El sistema soporta almacenamiento y búsqueda vectorial:
 - Puedes enriquecer la metadata en cualquier punto del pipeline para adaptarla a tus necesidades.
 - Puedes implementar nuevos generadores de embeddings heredando de `BaseEmbedding`.
 - Puedes crear nuevas vector stores heredando de `BaseVectorStore`.
+- Puedes crear nuevos indexadores heredando de `BaseIndexer` para flujos personalizados.
 
 ## Ejemplo de uso en código
 
@@ -102,41 +114,25 @@ from rag.loaders.text import TextAndPdfFileLoader
 from rag.splitters.splitter import CharacterSplitter
 from rag.embeddings.embed import SimpleEmbedding
 from rag.vectorstores.memory import MemoryVectorStore
+from rag.indexing.indexer import SimpleIndexer
 from utils.logger import get_logger
 
 def main():
     logger = get_logger()
     loader = TextAndPdfFileLoader()
-    logger.info("Iniciando carga de documentos...")
-    docs = loader.load("resources/")
-    logger.info(f"Documentos cargados: {len(docs)}")
-    for doc in docs:
-        logger.info(f"Documento cargado: {doc.source} (longitud: {len(doc.content)} caracteres) | Metadata: {doc.metadata}")
-
     splitter = CharacterSplitter(chunk_size=1000, overlap=100)
-    all_chunks = []
-    for doc in docs:
-        chunks = splitter.split(doc)
-        all_chunks.extend(chunks)
-        logger.info(f"Documento {doc.source} dividido en {len(chunks)} fragmentos")
-        for chunk in chunks:
-            logger.info(f"Fragmento metadata: {chunk.metadata}")
-    logger.info(f"Total de fragmentos generados: {len(all_chunks)}")
-
-    # Embeddings
     embedder = SimpleEmbedding()
-    embeddings = embedder.embed(all_chunks)
-    logger.info(f"Embeddings generados para {len(embeddings)} fragmentos")
-    for i, emb in enumerate(embeddings[:5]):
-        logger.info(f"Embedding {i}: {emb}")
-
-    # Vector Store
     vectorstore = MemoryVectorStore()
-    vectorstore.add(embeddings, all_chunks)
-    logger.info("Embeddings y fragmentos añadidos al vector store.")
+
+    # Indexing
+    indexer = SimpleIndexer(loader, splitter, embedder, vectorstore)
+    logger.info("Iniciando indexación...")
+    chunks = indexer.index("resources/")
+    logger.info(f"Total de fragmentos indexados: {len(chunks)}")
 
     # Ejemplo de búsqueda
-    if embeddings:
+    if chunks:
+        embeddings = embedder.embed(chunks)
         results = vectorstore.search(embeddings[0], top_k=3)
         logger.info("Resultados de búsqueda (top 3):")
         for doc, score in results:
