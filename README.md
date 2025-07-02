@@ -28,6 +28,9 @@ rag/
     indexing/
         base_indexer.py
         indexer.py
+    retrievers/
+        base_retriever.py
+        retriever.py
 models/
     document.py
 resources/
@@ -69,6 +72,8 @@ Esto cargará los documentos desde la ruta especificada en `main.py`, los dividi
 - **rag/vectorstores/memory.py**: Implementación de una vector store en memoria con búsqueda por similitud de coseno.
 - **rag/indexing/base_indexer.py**: Clase base abstracta para indexadores.
 - **rag/indexing/indexer.py**: Implementación de un indexador (`SimpleIndexer`) que orquesta el pipeline de carga, división, embedding y almacenamiento.
+- **rag/retrievers/base_retriever.py**: Define la interfaz base para cualquier retriever.
+- **rag/retrievers/retriever.py**: Implementa `SimpleRetriever`, que utiliza la vector store para recuperar los fragmentos más similares a una consulta (query embedding).
 - **utils/logger.py**: Configuración centralizada del logger para el proyecto.
 - **resources/**: Carpeta sugerida para almacenar los documentos a cargar.
 
@@ -98,6 +103,15 @@ El sistema centraliza el pipeline de indexación:
 - **rag/indexing/base_indexer.py**: Define la interfaz base para cualquier indexador.
 - **rag/indexing/indexer.py**: Implementa `SimpleIndexer`, que orquesta la carga, división, embedding y almacenamiento en la vector store.
 
+## Retrievers
+
+El sistema incluye una arquitectura modular para la recuperación de fragmentos relevantes a partir de una consulta vectorizada:
+
+- **rag/retrievers/base_retriever.py**: Define la interfaz base para cualquier retriever.
+- **rag/retrievers/retriever.py**: Implementa `SimpleRetriever`, que utiliza la vector store para recuperar los fragmentos más similares a una consulta (query embedding).
+
+Puedes extender el sistema creando nuevos retrievers que implementen lógica avanzada, como filtrado por metadata, re-ranking, o integración con otros sistemas de búsqueda.
+
 ## Personalización y extensión
 
 - Puedes extender el sistema añadiendo nuevos loaders para otros formatos de archivo siguiendo la estructura de `BaseLoader`.
@@ -115,6 +129,7 @@ from rag.splitters.splitter import CharacterSplitter
 from rag.embeddings.embed import SimpleEmbedding
 from rag.vectorstores.memory import MemoryVectorStore
 from rag.indexing.indexer import SimpleIndexer
+from rag.retrievers.retriever import SimpleRetriever
 from utils.logger import get_logger
 
 def main():
@@ -135,6 +150,15 @@ def main():
         embeddings = embedder.embed(chunks)
         results = vectorstore.search(embeddings[0], top_k=3)
         logger.info("Resultados de búsqueda (top 3):")
+        for doc, score in results:
+            logger.info(f"Score: {score:.4f} | Metadata: {doc.metadata}")
+
+    # Retriever
+    retriever = SimpleRetriever(vectorstore)
+    if chunks:
+        query_embedding = embedder.embed([chunks[0]])[0]  # Ejemplo: usar el primer fragmento como consulta
+        results = retriever.retrieve(query_embedding, top_k=3)
+        logger.info("Resultados de recuperación (top 3):")
         for doc, score in results:
             logger.info(f"Score: {score:.4f} | Metadata: {doc.metadata}")
 
