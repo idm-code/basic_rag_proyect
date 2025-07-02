@@ -3,6 +3,7 @@ from rag.splitters.splitter import CharacterSplitter
 from rag.embeddings.embed import SimpleEmbedding
 from rag.vectorstores.memory import MemoryVectorStore
 from rag.indexing.indexer import SimpleIndexer
+from rag.retrievers.retriever import SimpleRetriever
 from utils.logger import get_logger
 
 def main():
@@ -46,11 +47,12 @@ def main():
     chunks = indexer.index("resources/")
     logger.info(f"Total de fragmentos indexados: {len(chunks)}")
 
-    # Ejemplo de búsqueda
+    # Retriever
+    retriever = SimpleRetriever(vectorstore)
     if chunks:
-        embeddings = embedder.embed(chunks)
-        results = vectorstore.search(embeddings[0], top_k=3)
-        logger.info("Resultados de búsqueda (top 3):")
+        query_embedding = embedder.embed([chunks[0]])[0]
+        results = retriever.retrieve(query_embedding, top_k=3)
+        logger.info("Resultados de recuperación (top 3):")
         for doc, score in results:
             logger.info(f"Score: {score:.4f} | Metadata: {doc.metadata}")
 
