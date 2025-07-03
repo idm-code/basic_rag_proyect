@@ -4,6 +4,7 @@ from rag.embeddings.embed import SimpleEmbedding
 from rag.vectorstores.memory import MemoryVectorStore
 from rag.indexing.indexer import SimpleIndexer
 from rag.retrievers.retriever import SimpleRetriever
+from rag.generation.generator import SimpleGenerator
 from utils.logger import get_logger
 
 def main():
@@ -49,12 +50,15 @@ def main():
 
     # Retriever
     retriever = SimpleRetriever(vectorstore)
+    generator = SimpleGenerator()
     if chunks:
+        query = "¿Cuál es el propósito principal del documento?"
         query_embedding = embedder.embed([chunks[0]])[0]
         results = retriever.retrieve(query_embedding, top_k=3)
-        logger.info("Resultados de recuperación (top 3):")
-        for doc, score in results:
-            logger.info(f"Score: {score:.4f} | Metadata: {doc.metadata}")
+        top_contexts = [doc for doc, _ in results]
+        respuesta = generator.generate(query, top_contexts)
+        logger.info("Respuesta generada por el sistema:")
+        logger.info(respuesta)
 
 if __name__ == "__main__":
     main()
