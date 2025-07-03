@@ -31,6 +31,9 @@ rag/
     retrievers/
         base_retriever.py
         retriever.py
+    generation/
+        base_generator.py
+        generator.py
 models/
     document.py
 resources/
@@ -74,6 +77,8 @@ Esto cargará los documentos desde la ruta especificada en `main.py`, los dividi
 - **rag/indexing/indexer.py**: Implementación de un indexador (`SimpleIndexer`) que orquesta el pipeline de carga, división, embedding y almacenamiento.
 - **rag/retrievers/base_retriever.py**: Define la interfaz base para cualquier retriever.
 - **rag/retrievers/retriever.py**: Implementa `SimpleRetriever`, que utiliza la vector store para recuperar los fragmentos más similares a una consulta (query embedding).
+- **rag/generation/base_generator.py**: Define la interfaz base para cualquier generador de respuestas.
+- **rag/generation/generator.py**: Implementa `SimpleGenerator`, que simula la generación de una respuesta concatenando la pregunta y el contenido de los fragmentos recuperados como contexto relevante.
 - **utils/logger.py**: Configuración centralizada del logger para el proyecto.
 - **resources/**: Carpeta sugerida para almacenar los documentos a cargar.
 
@@ -112,6 +117,15 @@ El sistema incluye una arquitectura modular para la recuperación de fragmentos 
 
 Puedes extender el sistema creando nuevos retrievers que implementen lógica avanzada, como filtrado por metadata, re-ranking, o integración con otros sistemas de búsqueda.
 
+## Generación de Respuesta
+
+El sistema incluye una arquitectura modular para la generación de respuestas a partir de los fragmentos recuperados:
+
+- **rag/generation/base_generator.py**: Define la interfaz base para cualquier generador de respuestas.
+- **rag/generation/generator.py**: Implementa `SimpleGenerator`, que simula la generación de una respuesta concatenando la pregunta y el contenido de los fragmentos recuperados como contexto relevante.
+
+Puedes extender el sistema creando nuevos generadores que integren modelos LLM reales (por ejemplo, OpenAI, HuggingFace, etc.) para obtener respuestas generadas de manera inteligente a partir del contexto.
+
 ## Personalización y extensión
 
 - Puedes extender el sistema añadiendo nuevos loaders para otros formatos de archivo siguiendo la estructura de `BaseLoader`.
@@ -130,6 +144,7 @@ from rag.embeddings.embed import SimpleEmbedding
 from rag.vectorstores.memory import MemoryVectorStore
 from rag.indexing.indexer import SimpleIndexer
 from rag.retrievers.retriever import SimpleRetriever
+from rag.generation.generator import SimpleGenerator
 from utils.logger import get_logger
 
 def main():
@@ -161,6 +176,18 @@ def main():
         logger.info("Resultados de recuperación (top 3):")
         for doc, score in results:
             logger.info(f"Score: {score:.4f} | Metadata: {doc.metadata}")
+
+    # Generación de respuesta
+    generator = SimpleGenerator()
+    if chunks:
+        query = "¿Cuál es el propósito principal del documento?"
+        query_doc = Document(query, source="user_query")
+        query_embedding = embedder.embed([query_doc])[0]
+        results = retriever.retrieve(query_embedding, top_k=3)
+        top_contexts = [doc for doc, _ in results]
+        respuesta = generator.generate(query, top_contexts)
+        logger.info("Respuesta generada por el sistema:")
+        logger.info(respuesta)
 
 if __name__ == "__main__":
     main()
